@@ -66,12 +66,14 @@ class UsersController extends Controller
                 'password' => $request->password,
                 'scope' => $user->role()->first()->role,
             ]);
-            var_dump($user->role()->first()->role);
             $token = Request::create(
                 'oauth/token',
                 'POST'
             );
             return \Route::dispatch($token);
+        }
+        else{
+            return response()->json(["message" => "wrong credentials"], 401);
         }
     }
 

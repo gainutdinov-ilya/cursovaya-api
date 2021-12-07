@@ -19,7 +19,9 @@ use App\Http\Controllers\ProductsController;
 
 Route::middleware('auth:api')->group(function () {
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        $user = $request->user();
+        $role = $user->role()->first()->role;
+        return response()->json(array_merge($user->toArray(), ["role"=>$role]), 200);
     });
     Route::post('/logout', [UsersController::class, 'logout']);
 });
