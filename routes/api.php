@@ -23,6 +23,7 @@ Route::middleware('auth:api')->group(function () {
         $role = $user->role()->first()->role;
         return response()->json(array_merge($user->toArray(), ["role"=>$role]), 200);
     });
+    Route::put('/user', [UsersController::class, 'update']);
     Route::post('/logout', [UsersController::class, 'logout']);
 });
 

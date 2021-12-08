@@ -103,4 +103,19 @@ class UsersController extends Controller
         return response()->json(["message"=> "logout success"]);
     }
 
+    function update(Request $request){
+        $user = $request->user();
+        if(isset($request->name)) {
+            $user->name = $request->input('name');
+        }
+        if(isset($request->surname)) {
+            $user->surname = $request->input('surname');
+        }
+        if(isset($request->second_name))
+            $user->second_name = $request->input('second_name');
+        if(isset($request->oms))
+            $user->oms = $request->input('oms');
+        $user->save();
+        return response()->json(["message"=>"updated"], 200);
+    }
 }
