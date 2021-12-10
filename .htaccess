@@ -1,0 +1,3 @@
+RewriteEngine on
+
+RewriteRule ^server\.php$ / [L]

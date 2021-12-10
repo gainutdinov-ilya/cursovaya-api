@@ -25,6 +25,15 @@ Route::middleware('auth:api')->group(function () {
     });
     Route::put('/user', [UsersController::class, 'update']);
     Route::post('/logout', [UsersController::class, 'logout']);
+
+    Route::middleware('role:admin')->group(function (){
+        Route::get('/users', [UsersController::class,'getUsers']);
+        Route::get('/usersCount', [UsersController::class, 'getUsersCount']);
+    });
+    Route::middleware('role:admin,doctor,personal')->group(function (){
+        Route::get('/userByID', [UsersController::class, 'getUserByID']);
+        Route::put('/userByID', [UsersController::class, 'updateUserByID']);
+    });
 });
 
 Route::post("/register", [UsersController::class, 'create']);

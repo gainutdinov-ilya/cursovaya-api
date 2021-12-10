@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Client;
 use App\Models\Roles;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Passport\Passport;
 
 class UsersController extends Controller
 {
@@ -115,7 +116,50 @@ class UsersController extends Controller
             $user->second_name = $request->input('second_name');
         if(isset($request->oms))
             $user->oms = $request->input('oms');
+        if(isset($request->phone_number))
+            $user->phone_number = $request->input('phone_number');
         $user->save();
         return response()->json(["message"=>"updated"], 200);
+    }
+
+    function getUsers(Request $request){
+        $users = User::all()->slice($request->offset, $request->limit);
+        $answer = [];
+        foreach ($users as $user){
+            $role = $user->role()->first()->role;
+            $answer = array_merge($answer, array(array_merge($user->toArray(), ["role"=>$role]) ));
+        }
+        return response()->json($answer, 201);
+    }
+
+    function getUsersCount(){
+        return response()->json(["count" =>  User::all()->count()], 201);
+    }
+
+    function getUserByID(Request $request){
+        $user = User::where('id',$request->id)->first();
+        $role = $user->role()->first()->role;
+        return response()->json(array_merge($user->toArray(), ["role"=>$role]), 200);
+    }
+
+    function updateUserByID(Request $request){
+        $user = User::where('id',$request->id)->first();
+        $role = $user->role()->first();
+        if(isset($request->name)) {
+            $user->name = $request->input('name');
+        }
+        if(isset($request->surname)) {
+            $user->surname = $request->input('surname');
+        }
+        if(isset($request->second_name))
+            $user->second_name = $request->input('second_name');
+        if(isset($request->oms))
+            $user->oms = $request->input('oms');
+        if(isset($request->phone_number))
+            $user->phone_number = $request->input('phone_number');
+        $user->save();
+        $role->role = $request->role;
+        $role->save();
+        return response()->json(["message"=> "updated"], 204);
     }
 }
