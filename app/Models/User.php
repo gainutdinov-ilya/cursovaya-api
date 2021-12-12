@@ -47,6 +47,10 @@ class User extends Authenticatable
     ];
 
     public function role(){
-        return $this->hasOne(Roles::class,'user');
+        return $this->hasOne(Roles::class,'user')->first();
+    }
+
+    public function doctor(){
+        return $this->hasOne( Doctors::class, 'user')->first();
     }
 }

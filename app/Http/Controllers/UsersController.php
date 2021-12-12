@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Doctors;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Client;
 use App\Models\Roles;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Passport\Passport;
+use mysql_xdevapi\Exception;
 
 class UsersController extends Controller
 {
@@ -65,7 +67,7 @@ class UsersController extends Controller
                 'client_secret' => $client->secret,
                 'username' => $request->email,
                 'password' => $request->password,
-                'scope' => $user->role()->first()->role,
+                'scope' => $user->role()->role,
             ]);
             $token = Request::create(
                 'oauth/token',
@@ -126,7 +128,7 @@ class UsersController extends Controller
         $users = User::all()->slice($request->offset, $request->limit);
         $answer = [];
         foreach ($users as $user){
-            $role = $user->role()->first()->role;
+            $role = $user->role()->role;
             $answer = array_merge($answer, array(array_merge($user->toArray(), ["role"=>$role]) ));
         }
         return response()->json($answer, 201);
@@ -138,13 +140,18 @@ class UsersController extends Controller
 
     function getUserByID(Request $request){
         $user = User::where('id',$request->id)->first();
-        $role = $user->role()->first()->role;
-        return response()->json(array_merge($user->toArray(), ["role"=>$role]), 200);
+        $role = $user->role()->role;
+        $speciality = null;
+        if($role == 'doctor'){
+            if($user->doctor() != null)
+                $speciality = $user->doctor()->speciality;
+        }
+        return response()->json(array_merge($user->toArray(), ["role"=>$role, "speciality" => $speciality]), 200);
     }
 
     function updateUserByID(Request $request){
         $user = User::where('id',$request->id)->first();
-        $role = $user->role()->first();
+        $role = $user->role();
         if(isset($request->name)) {
             $user->name = $request->input('name');
         }
@@ -158,8 +165,68 @@ class UsersController extends Controller
         if(isset($request->phone_number))
             $user->phone_number = $request->input('phone_number');
         $user->save();
+        if($role-> role == 'doctor' && $request->role != 'doctor'){
+            $user->doctor()->delete();
+        }
         $role->role = $request->role;
+        if($request->role == 'doctor'){
+            $doctor = $user->doctor();
+            if($doctor == null){
+                Doctors::create([
+                    'user' => $user->id,
+                    'speciality' => $request->speciality
+                ]);
+            }else{
+                $doctor->speciality = $request->speciality;
+                $doctor->save();
+            }
+        }
         $role->save();
         return response()->json(["message"=> "updated"], 204);
     }
+
+    function createUserWithRole(Request $request)
+    {
+
+        $valid = validator($request->only('email', 'name', 'password', 'phone_number','surname','second_name', 'oms'), [
+            'name' => 'required|string|max:255',
+            'surname' => 'required|string|max:255',
+            'second_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'phone_number' => 'required|string|unique:users',
+            'password' => 'required|string|min:6',
+            'oms' =>'required|string|unique:users',
+        ]);
+
+        if ($valid->fails()) {
+            $jsonError = response()->json($valid->errors()->all(), 400);
+            return \Response::json($jsonError);
+        }
+
+        $data = request()->only('email', 'name', 'password', 'phone_number','surname','second_name','oms');
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone_number' => $data['phone_number'],
+            'surname' => $data['surname'],
+            'second_name' => $data['second_name'],
+            'oms' => $data['oms'],
+            'password' => bcrypt($data['password']),
+        ]);
+
+        Roles::create([
+            'user' => $user->id,
+            'role' => $request->role
+        ]);
+        if($request->role == 'doctor'){
+            Doctors::create([
+                'user' => $user->id,
+                'speciality' => $request->speciality
+            ]);
+        }
+
+        return response()->json(["message"=>"create"], 201);
+    }
+
 }

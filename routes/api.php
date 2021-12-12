@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ProductsController;
+use App\Http\Controllers\CalendarController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,8 +21,12 @@ use App\Http\Controllers\ProductsController;
 Route::middleware('auth:api')->group(function () {
     Route::get('/user', function (Request $request) {
         $user = $request->user();
-        $role = $user->role()->first()->role;
-        return response()->json(array_merge($user->toArray(), ["role"=>$role]), 200);
+        $role = $user->role()->role;
+        $speciality = null;
+        if($role == 'doctor'){
+            $speciality = $user->doctor()->speciality;
+        }
+        return response()->json(array_merge($user->toArray(), ["role"=>$role, "speciality" => $speciality]), 200);
     });
     Route::put('/user', [UsersController::class, 'update']);
     Route::post('/logout', [UsersController::class, 'logout']);
@@ -29,10 +34,12 @@ Route::middleware('auth:api')->group(function () {
     Route::middleware('role:admin')->group(function (){
         Route::get('/users', [UsersController::class,'getUsers']);
         Route::get('/usersCount', [UsersController::class, 'getUsersCount']);
+        Route::post('/generateCalendar', [CalendarController::class, 'generate']);
     });
     Route::middleware('role:admin,doctor,personal')->group(function (){
         Route::get('/userByID', [UsersController::class, 'getUserByID']);
         Route::put('/userByID', [UsersController::class, 'updateUserByID']);
+        Route::post('/user', [UsersController::class, 'createUserWithRole']);
     });
 });
 
