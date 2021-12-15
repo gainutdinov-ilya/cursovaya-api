@@ -262,16 +262,16 @@ class UsersController extends Controller
     function generateAlerts(){
         $user = Auth::user();
         $answer = [];
-        if($user->isClient()){
+        if($user->isClient() || $user->isAdmin()){
             $notes = Notes::all()->where('client', '==', Auth::user()->id);
             if($notes != null){
                 foreach ($notes as $note){
                     if($note->visited == false && $note->calendar()->dateTime > new \DateTime("now", new \DateTimeZone('Asia/Yekaterinburg'))){
                         $answer[] = array(
                             'title' => 'Запись',
-                            'text' => "У вас имеется запись на ".$note->calendar()->dateTime->format("d-m-y")." нажмите сюда чтобы получить талон",
+                            'text' => "У вас имеется запись на ".$note->calendar()->dateTime->format("d-m-y").". Нажмите, чтобы ",
                             'action' => '/ticket/'.$note->id,
-                            'action_title' => 'Получить'
+                            'action_title' => 'Получить талон'
                             );
                     }
                 }

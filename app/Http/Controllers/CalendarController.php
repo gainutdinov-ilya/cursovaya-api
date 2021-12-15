@@ -180,6 +180,40 @@ class CalendarController extends Controller
                 "note" => $note,
                 "ticket" => Auth::user()->id." ".$calendar->id." ".$note->id
             ]);
+        }elseif (Auth::user()->isDoctor()){
+            $note = Notes::all()->where('id', '==', $request->note)->first();
+            $calendar = $note->calendar();
+            $client = $note->client();
+            if($client->id == $request->client && $calendar->id == $request->calendar){
+                $note->visited = true;
+                $note->save();
+                $time = new \DateTime($calendar->dateTime);
+                $ansewer = [
+                    "name" => $client->name,
+                    "surname" => $client->surname,
+                    "second_name" => $client->second_name,
+                    "time" => $time->format("d-m-Y H:i")
+                ];
+                return response()->json($ansewer, 201);
+            }
+
+            return response()->json($request, 400);
+        }
+        else{
+            $note = Notes::all()->where('id', '==', $request->id)->first();
+            $calendar = $note->calendar();
+            $doctor = $calendar->doctor();
+            return response()->json([
+                "calendar" => $calendar,
+                "doctor" => [
+                    "name" => $doctor->name,
+                    "surname" => $doctor->surname,
+                    "second_name" => $doctor->second_name,
+                    "speciality" => $doctor->doctor()->speciality
+                ],
+                "note" => $note,
+                "ticket" => Auth::user()->id." ".$calendar->id." ".$note->id
+            ]);
         }
     }
 
@@ -191,4 +225,5 @@ class CalendarController extends Controller
         $note->delete();
         return response()->json(["message" => "deleted"], 200);
     }
+
 }

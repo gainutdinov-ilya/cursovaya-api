@@ -47,6 +47,7 @@ Route::middleware('auth:api')->group(function () {
         Route::put('/user/id', [UsersController::class, 'updateUserByID']);
         Route::post('/user', [UsersController::class, 'createUserWithRole']);
         Route::get('/doctors', [UsersController::class, 'getDoctors']);
+
     });
 });
 
