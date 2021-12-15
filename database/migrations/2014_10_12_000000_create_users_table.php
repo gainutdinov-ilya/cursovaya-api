@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Roles;
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -28,25 +30,39 @@ class CreateUsersTable extends Migration
         });
         Schema::create('doctors', function (Blueprint $table){
             $table->id();
-            $table->foreignId('user')->constrained('users');
+            $table->foreignId('user')->constrained('users')->onDelete('cascade');
             $table->string('speciality');
         });
         Schema::create('calendar', function (Blueprint $table){
             $table->id();
-            $table->foreignId('user')->constrained('users');
+            $table->foreignId('doctor')->constrained('users')->onDelete('cascade');
             $table->dateTime('dateTime');
             $table->boolean('free');
         });
         Schema::create('notes', function (Blueprint $table){
             $table->id();
-            $table->foreignId('client')->constrained('users');
-            $table->foreignId('calendar')->constrained('calendar');
+            $table->foreignId('client')->constrained('users')->onDelete('cascade');
+            $table->foreignId('calendar')->constrained('calendar')->onDelete('cascade');
         });
         Schema::create('roles', function (Blueprint $table){
             $table->id();
-            $table->foreignId('user')->constrained('users');
+            $table->foreignId('user')->constrained('users')->onDelete('cascade');
             $table->string('role');
         });
+        $user = User::create([
+            'name' => "Администратор",
+            'email' => "admin@admin.com",
+            'phone_number' => "0",
+            'surname' => "Администратор",
+            'second_name' => "Администратор",
+            'oms' => "0000000000",
+            'password' => bcrypt("1234567"),
+        ]);
+
+        Roles::create([
+            'user' => $user->id,
+            'role' => 'admin'
+        ]);
     }
 
     /**

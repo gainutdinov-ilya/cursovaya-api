@@ -16,5 +16,9 @@ class Doctors extends Model
         'speciality'
     ];
 
+    function user(){
+        return $this->belongsTo(User::class,'user')->first();
+    }
+
     public $timestamps = false;
 }

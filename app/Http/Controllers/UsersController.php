@@ -3,24 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Doctors;
+use App\Models\Notes;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Client;
 use App\Models\Roles;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Passport\Passport;
-use mysql_xdevapi\Exception;
+
 
 class UsersController extends Controller
 {
     function create(Request $request)
     {
-        /**
-         * Get a validator for an incoming registration request.
-         *
-         * @param array $request
-         * @return \Illuminate\Contracts\Validation\Validator
-         */
+
         $valid = validator($request->only('email', 'name', 'password', 'phone_number','surname','second_name', 'oms'), [
             'name' => 'required|string|max:255',
             'surname' => 'required|string|max:255',
@@ -32,8 +28,7 @@ class UsersController extends Controller
         ]);
 
         if ($valid->fails()) {
-            $jsonError = response()->json($valid->errors()->all(), 400);
-            return \Response::json($jsonError);
+            return response()->json($valid->errors()->all(), 400);
         }
 
         $data = request()->only('email', 'name', 'password', 'phone_number','surname','second_name','oms');
@@ -101,12 +96,29 @@ class UsersController extends Controller
 
     function logout(){
         auth()->user()->tokens->each(function ($token, $key){
-            $token->delete();
+            if($token == Auth::user()->token()){
+                $token->delete();
+            }
         });
         return response()->json(["message"=> "logout success"]);
     }
 
     function update(Request $request){
+
+        $valid = validator($request->only('email', 'name', 'password', 'phone_number','surname','second_name', 'oms'), [
+            'name' => 'string|max:255',
+            'surname' => 'string|max:255',
+            'second_name' => 'string|max:255',
+            'email' => 'string|email|max:255|unique:users',
+            'phone_number' => 'string|unique:users',
+            'password' => 'string|min:6',
+            'oms' =>'string|unique:users',
+        ]);
+
+        if ($valid->fails()) {
+            return response()->json($valid->errors()->all(), 400);
+        }
+
         $user = $request->user();
         if(isset($request->name)) {
             $user->name = $request->input('name');
@@ -120,6 +132,10 @@ class UsersController extends Controller
             $user->oms = $request->input('oms');
         if(isset($request->phone_number))
             $user->phone_number = $request->input('phone_number');
+        if(isset($request->email))
+            $user->email = $request->input('email');
+        if(isset($request->password))
+            $user->password = bcrypt($request->input('password'));
         $user->save();
         return response()->json(["message"=>"updated"], 200);
     }
@@ -227,6 +243,44 @@ class UsersController extends Controller
         }
 
         return response()->json(["message"=>"create"], 201);
+    }
+
+    function delete(Request $request){
+        $user = User::find($request->id);
+        $user->delete();
+    }
+
+    function getDoctors(){
+        $doctors = Doctors::all();
+        $answer = [];
+        foreach ($doctors as $doctor){
+            $answer = array_merge($answer, array(array_merge($doctor->user()->toArray(), ["speciality" => $doctor->speciality])));
+        }
+        return response()->json($answer, 201);
+    }
+
+    function generateAlerts(){
+        $user = Auth::user();
+        $answer = [];
+        if($user->isClient()){
+            $notes = Notes::all()->where('client', '==', Auth::user()->id);
+            if($notes != null){
+                foreach ($notes as $note){
+                    if($note->visited == false && $note->calendar()->dateTime > new \DateTime("now", new \DateTimeZone('Asia/Yekaterinburg'))){
+                        $answer[] = array(
+                            'title' => 'Запись',
+                            'text' => "У вас имеется запись на ".$note->calendar()->dateTime->format("d-m-y")." нажмите сюда чтобы получить талон",
+                            'action' => '/ticket/'.$note->id,
+                            'action_title' => 'Получить'
+                            );
+                    }
+                }
+            }
+        }
+        if(count($answer) == 0){
+            $answer = null;
+        }
+        return response()->json($answer, 201);
     }
 
 }

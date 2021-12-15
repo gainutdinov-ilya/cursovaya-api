@@ -12,7 +12,9 @@ class Calendar extends Model
     protected $table = 'calendar';
 
     protected $fillable = [
-        'doctor'
+        'doctor',
+        'dateTime',
+        'free'
     ];
 
     protected $casts = [
@@ -21,7 +23,7 @@ class Calendar extends Model
     ];
 
     function doctor(){
-        $this->belongsTo(User::class,'doctor')->first();
+        return $this->belongsTo(User::class,'doctor')->get()->first();
     }
 
     public $timestamps = false;

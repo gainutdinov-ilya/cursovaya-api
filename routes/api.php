@@ -28,18 +28,24 @@ Route::middleware('auth:api')->group(function () {
         }
         return response()->json(array_merge($user->toArray(), ["role"=>$role, "speciality" => $speciality]), 200);
     });
+    Route::get('/alerts', [UsersController::class, 'generateAlerts']);
     Route::put('/user', [UsersController::class, 'update']);
     Route::post('/logout', [UsersController::class, 'logout']);
-
+    Route::get('/calendar', [CalendarController::class, 'getRelevant']);
+    Route::post('/calendar/note', [CalendarController::class, 'createNote']);
+    Route::get('/calendar/note', [CalendarController::class, 'getNote']);
     Route::middleware('role:admin')->group(function (){
         Route::get('/users', [UsersController::class,'getUsers']);
-        Route::get('/usersCount', [UsersController::class, 'getUsersCount']);
-        Route::post('/generateCalendar', [CalendarController::class, 'generate']);
+        Route::get('/users/count', [UsersController::class, 'getUsersCount']);
+        Route::post('/calendar', [CalendarController::class, 'generate'])->middleware('cors');
+        Route::delete('/calendar', [CalendarController::class, 'delete']);
+        Route::delete('/user', [UsersController::class, 'delete']);
     });
     Route::middleware('role:admin,doctor,personal')->group(function (){
-        Route::get('/userByID', [UsersController::class, 'getUserByID']);
-        Route::put('/userByID', [UsersController::class, 'updateUserByID']);
+        Route::get('/user/id', [UsersController::class, 'getUserByID']);
+        Route::put('/user/id', [UsersController::class, 'updateUserByID']);
         Route::post('/user', [UsersController::class, 'createUserWithRole']);
+        Route::get('/doctors', [UsersController::class, 'getDoctors']);
     });
 });
 

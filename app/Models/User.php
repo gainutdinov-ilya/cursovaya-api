@@ -53,4 +53,24 @@ class User extends Authenticatable
     public function doctor(){
         return $this->hasOne( Doctors::class, 'user')->first();
     }
+
+    public function notes(){
+        return $this->hasMany( Notes::class, 'client')->get();
+    }
+
+    public function isAdmin(){
+        return $this->role()->role == 'admin';
+    }
+
+    public function isDoctor(){
+        return $this->role()->role == 'doctor';
+    }
+
+    public function isClient(){
+        return $this->role()->role == 'client';
+    }
+
+    public function isPersonal(){
+        return $this->role()->role == 'perosnal';
+    }
 }
