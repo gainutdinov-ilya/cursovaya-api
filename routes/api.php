@@ -34,6 +34,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/calendar', [CalendarController::class, 'getRelevant']);
     Route::post('/calendar/note', [CalendarController::class, 'createNote']);
     Route::get('/calendar/note', [CalendarController::class, 'getNote']);
+    Route::delete('/calendar/note', [CalendarController::class, 'cancelNote']);
     Route::middleware('role:admin')->group(function (){
         Route::get('/users', [UsersController::class,'getUsers']);
         Route::get('/users/count', [UsersController::class, 'getUsersCount']);

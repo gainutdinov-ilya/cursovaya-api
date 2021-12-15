@@ -149,7 +149,7 @@ class CalendarController extends Controller
             }
         }
 
-        $calendar = Calendar::find($request->id)->first();
+        $calendar = Calendar::all()->where('id','==',$request->id)->first();
         $calendar->free = false;
         $calendar->save();
         Notes::create([
@@ -177,8 +177,18 @@ class CalendarController extends Controller
                     "second_name" => $doctor->second_name,
                     "speciality" => $doctor->doctor()->speciality
                 ],
-                "note" => $note
+                "note" => $note,
+                "ticket" => Auth::user()->id." ".$calendar->id." ".$note->id
             ]);
         }
+    }
+
+    function cancelNote(Request $request){
+        $note = Notes::all()->where('id','==', $request->id)->first();
+        $calendar = $note->calendar();
+        $calendar->free = true;
+        $calendar->save();
+        $note->delete();
+        return response()->json(["message" => "deleted"], 200);
     }
 }
