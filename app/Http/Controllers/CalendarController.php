@@ -40,7 +40,8 @@ class CalendarController extends Controller
                 continue;
             $noteTime = new \DateTime($startDate->format("d-m-Y") . " " . $request->startTime);
             $endTime = new \DateTime($startDate->format("d-m-Y") . " " . $request->endTime);
-            for (; $noteTime < $endTime; $noteTime->add($AddInterval)) {
+            for (; $noteTime->add($AddInterval) < $endTime; $noteTime->add($AddInterval)) {
+                $noteTime->sub($AddInterval);
                 $catchF = false;
                 if ($request->catches != null) {
                     foreach ($request->catches as $catch) {
@@ -140,24 +141,39 @@ class CalendarController extends Controller
 
     function createNote(Request $request)
     {
-        $notes = Notes::all()->where('client', '==', Auth::user()->id);
-        if ($notes != null) {
-            foreach ($notes as $note) {
-                if ($note->visited == false && $note->calendar()->dateTime > new \DateTime("now", new \DateTimeZone('Asia/Yekaterinburg'))) {
-                    return response()->json(["message" => "Client has unvisited tickets"], 403);
+        if(Auth::user()->isClient()) {
+            $notes = Notes::all()->where('client', '==', Auth::user()->id);
+            if ($notes != null) {
+                foreach ($notes as $note) {
+                    if ($note->visited == false && $note->calendar()->dateTime > new \DateTime("now", new \DateTimeZone('Asia/Yekaterinburg'))) {
+                        return response()->json(["message" => "Client has unvisited tickets"], 403);
+                    }
                 }
             }
-        }
 
-        $calendar = Calendar::all()->where('id','==',$request->id)->first();
-        $calendar->free = false;
-        $calendar->save();
-        Notes::create([
-            "client" => Auth::user()->id,
-            "calendar" => $request->id,
-            "visited" => false
-        ]);
-        return response()->json(["message" => "created"], 201);
+            $calendar = Calendar::all()->where('id', '==', $request->id)->first();
+            $calendar->free = false;
+            $calendar->save();
+            Notes::create([
+                "client" => Auth::user()->id,
+                "calendar" => $request->id,
+                "visited" => false
+            ]);
+            return response()->json(["message" => "created"], 201);
+        }else{
+            $calendar = Calendar::all()->where('id', '==', $request->id)->first();
+            if(!$calendar->free){
+                return response()->json(["message" => "taked"], 401);
+            }
+            $calendar->free = false;
+            $calendar->save();
+            Notes::create([
+                "client" => $request->userID,
+                "calendar" => $request->id,
+                "visited" => false
+            ]);
+            return response()->json(["message" => "created"], 201);
+        }
     }
 
     function getNote(Request $request)
@@ -200,7 +216,7 @@ class CalendarController extends Controller
             return response()->json($request, 400);
         }
         else{
-            $note = Notes::all()->where('id', '==', $request->id)->first();
+            $note = Notes::all()->where('id', '==', $request->id)->get()->first();
             $calendar = $note->calendar();
             $doctor = $calendar->doctor();
             return response()->json([
@@ -215,6 +231,26 @@ class CalendarController extends Controller
                 "ticket" => Auth::user()->id." ".$calendar->id." ".$note->id
             ]);
         }
+    }
+
+    function getNotes(Request $request){
+        $notes = Notes::all()->where('client', '==', $request->id);
+        $notes = $notes->sortByDesc('id');
+        $answer = [];
+        foreach ($notes as $note){
+            $calendar = $note->calendar();
+            $doctor = $calendar->doctor();
+            $answer[] = ["calendar" => $calendar->dateTime->format("d-m-Y H:i"),
+                "doctor" => [
+                "name" => $doctor->name,
+                "surname" => $doctor->surname,
+                "second_name" => $doctor->second_name,
+                "speciality" => $doctor->doctor()->speciality
+            ],
+                "note" => $note,
+                "ticket" => $request->id." ".$calendar->id." ".$note->id];
+        }
+        return response()->json(array_merge($answer), 200);
     }
 
     function cancelNote(Request $request){

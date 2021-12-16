@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Calendar;
 use App\Models\Doctors;
 use App\Models\Notes;
 use Illuminate\Http\Request;
@@ -204,7 +205,7 @@ class UsersController extends Controller
     function createUserWithRole(Request $request)
     {
 
-        $valid = validator($request->only('email', 'name', 'password', 'phone_number','surname','second_name', 'oms'), [
+        $valid = \validator($request->only('email', 'name', 'password', 'phone_number','surname','second_name', 'oms'), [
             'name' => 'required|string|max:255',
             'surname' => 'required|string|max:255',
             'second_name' => 'required|string|max:255',
@@ -215,8 +216,7 @@ class UsersController extends Controller
         ]);
 
         if ($valid->fails()) {
-            $jsonError = response()->json($valid->errors()->all(), 400);
-            return \Response::json($jsonError);
+            return response()->json($valid->errors()->all(), 401);
         }
 
         $data = request()->only('email', 'name', 'password', 'phone_number','surname','second_name','oms');
@@ -262,24 +262,64 @@ class UsersController extends Controller
     function generateAlerts(){
         $user = Auth::user();
         $answer = [];
-        if($user->isClient() || $user->isAdmin()){
+        if($user->isClient()){
             $notes = Notes::all()->where('client', '==', Auth::user()->id);
             if($notes != null){
                 foreach ($notes as $note){
                     if($note->visited == false && $note->calendar()->dateTime > new \DateTime("now", new \DateTimeZone('Asia/Yekaterinburg'))){
                         $answer[] = array(
                             'title' => 'Запись',
-                            'text' => "У вас имеется запись на ".$note->calendar()->dateTime->format("d-m-y").". Нажмите, чтобы ",
+                            'text' => "У вас имеется запись на ".$note->calendar()->dateTime->format("d-m-y H:i").". Нажмите, чтобы ",
                             'action' => '/ticket/'.$note->id,
                             'action_title' => 'Получить талон'
                             );
                     }
                 }
             }
+        }elseif ($user->isAdmin()){
+            $now = new \DateTime("now", new \DateTimeZone('Asia/Yekaterinburg'));
+            $calendar = Calendar::all()->last();
+            $doctors = Doctors::all();
+            $count = [];
+            foreach ($doctors as $doctor){
+                $doc = $doctor->user();
+                $tickets = Calendar::all()->where('dateTime', '>=', $now)->where('free', '==', 1)->where('doctor', '==', $doc->id)->sortBy('dateTime');
+                $count_this = [
+                    "doctor" => $doc,
+                    "count" => count($tickets)
+                ];
+                $count[] = $count_this;
+            }
+            $count = collect($count)->sortByDesc("count")->last();
+
+            $answer[] = array(
+                'title' => 'Напоминание',
+                'text' => "В данный момент талоны присутствуют до ".$calendar->dateTime->format("d-m-y H:i")." Минимальное кол-во талонов составляет: ".$count["count"]." - ".$count["doctor"]["surname"]." ".mb_substr($count["doctor"]["name"],0,1,'UTF8').". ".mb_substr($count["doctor"]["second_name"],0,1,'UTF8').".",
+                'action' => '/timeToRecord',
+                'action_title' => 'Управление талонами'
+            );
         }
         if(count($answer) == 0){
             $answer = null;
         }
+        return response()->json($answer, 201);
+    }
+
+    function searchUsers(Request $request){
+
+        $search = $request->search;
+        $search = mb_strtoupper(mb_substr($search, 0, 1, 'UTF8'), 'UTF8').mb_substr($search, 1, mb_strlen($search, 'UTF8'), 'UTF8');
+        $users = User::where('surname','like',"%".$search."%")->get();
+        $answer = [];
+        foreach ($users as $user){
+            $role = $user->role()->role;
+            if($role == 'client' || Auth::user()->isAdmin()) {
+                $answer = array_merge($answer, array(array_merge($user->toArray(), ["role" => $role])));
+            }
+        }
+        if(count($answer) == 0)
+            return response()->json(["message" => "not match"], 400);
+
         return response()->json($answer, 201);
     }
 

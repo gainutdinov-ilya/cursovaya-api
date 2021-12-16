@@ -43,6 +43,8 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/user', [UsersController::class, 'delete']);
     });
     Route::middleware('role:admin,doctor,personal')->group(function (){
+        Route::get('/user/notes', [CalendarController::class, 'getNotes']);
+        Route::get('/user/search', [UsersController::class, 'searchUsers']);
         Route::get('/user/id', [UsersController::class, 'getUserByID']);
         Route::put('/user/id', [UsersController::class, 'updateUserByID']);
         Route::post('/user', [UsersController::class, 'createUserWithRole']);
