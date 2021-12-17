@@ -40,7 +40,7 @@ class CalendarController extends Controller
                 continue;
             $noteTime = new \DateTime($startDate->format("d-m-Y") . " " . $request->startTime);
             $endTime = new \DateTime($startDate->format("d-m-Y") . " " . $request->endTime);
-            for (; $noteTime->add($AddInterval) <= $endTime; $noteTime->add($AddInterval)) {
+            for (; $noteTime->add($AddInterval) < $endTime; $noteTime->add($AddInterval)) {
                 $noteTime->sub($AddInterval);
                 $catchF = false;
                 if ($request->catches != null) {
@@ -63,7 +63,7 @@ class CalendarController extends Controller
                 foreach ($request->doctors as $doc) {
                     $answer[] = array(
                         'doctor' => $doc,
-                        'dateTime' => $noteTime->format("Y-m-d H:i:00"),
+                        'dateTime' => $noteTime->format("d-m-Y H:i"),
                         'free' => true
                     );
                 }
@@ -242,11 +242,11 @@ class CalendarController extends Controller
             $doctor = $calendar->doctor();
             $answer[] = ["calendar" => $calendar->dateTime->format("d-m-Y H:i"),
                 "doctor" => [
-                    "name" => $doctor->name,
-                    "surname" => $doctor->surname,
-                    "second_name" => $doctor->second_name,
-                    "speciality" => $doctor->doctor()->speciality
-                ],
+                "name" => $doctor->name,
+                "surname" => $doctor->surname,
+                "second_name" => $doctor->second_name,
+                "speciality" => $doctor->doctor()->speciality
+            ],
                 "note" => $note,
                 "ticket" => $request->id." ".$calendar->id." ".$note->id];
         }
