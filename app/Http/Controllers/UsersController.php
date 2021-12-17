@@ -106,14 +106,12 @@ class UsersController extends Controller
 
     function update(Request $request){
 
-        $valid = validator($request->only('email', 'name', 'password', 'phone_number','surname','second_name', 'oms'), [
+        $valid = validator($request->only('email', 'name', 'password', 'phone_number','surname','second_name'), [
             'name' => 'string|max:255',
             'surname' => 'string|max:255',
             'second_name' => 'string|max:255',
-            'email' => 'string|email|max:255|unique:users',
-            'phone_number' => 'string|unique:users',
+            'phone_number' => 'string',
             'password' => 'string|min:6',
-            'oms' =>'string|unique:users',
         ]);
 
         if ($valid->fails()) {
