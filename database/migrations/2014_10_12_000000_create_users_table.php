@@ -43,6 +43,7 @@ class CreateUsersTable extends Migration
             $table->id();
             $table->foreignId('client')->constrained('users')->onDelete('cascade');
             $table->foreignId('calendar')->constrained('calendar')->onDelete('cascade');
+            $table->boolean('visited');
         });
         Schema::create('roles', function (Blueprint $table){
             $table->id();
