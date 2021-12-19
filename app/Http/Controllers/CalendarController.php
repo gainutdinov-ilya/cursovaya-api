@@ -70,7 +70,7 @@ class CalendarController extends Controller
             }
         }
         Calendar::insert($answer);
-        return response()->json(["message" => "created"], 204);
+        return response()->json(["message" => "created"], 201);
     }
 
     function getRelevant()
@@ -124,7 +124,7 @@ class CalendarController extends Controller
             $doctors = null;
             $times = null;
         }
-        return response()->json(["doctors" => $doctors, "times" => $times], 201);
+        return response()->json(["doctors" => $doctors, "times" => $times], 200);
     }
 
     function delete(Request $request)
@@ -136,7 +136,7 @@ class CalendarController extends Controller
         }
 
         Calendar::whereIn('id', $ids)->delete();
-        return response()->json(["message" => "deleted"], 201);
+        return response()->json(["message" => "deleted"], 200);
     }
 
     function createNote(Request $request)
@@ -163,7 +163,7 @@ class CalendarController extends Controller
         }else{
             $calendar = Calendar::all()->where('id', '==', $request->id)->first();
             if(!$calendar->free){
-                return response()->json(["message" => "taked"], 401);
+                return response()->json(["message" => "taked"], 400);
             }
             $calendar->free = false;
             $calendar->save();
@@ -210,7 +210,7 @@ class CalendarController extends Controller
                     "second_name" => $client->second_name,
                     "time" => $time->format("d-m-Y H:i")
                 ];
-                return response()->json($ansewer, 201);
+                return response()->json($ansewer, 200);
             }
 
             return response()->json($request, 400);

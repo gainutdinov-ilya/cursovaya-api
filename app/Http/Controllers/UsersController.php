@@ -139,6 +139,7 @@ class UsersController extends Controller
         return response()->json(["message"=>"updated"], 200);
     }
 
+
     function getUsers(Request $request){
         $users = User::all()->slice($request->offset, $request->limit);
         $answer = [];
@@ -146,11 +147,11 @@ class UsersController extends Controller
             $role = $user->role()->role;
             $answer = array_merge($answer, array(array_merge($user->toArray(), ["role"=>$role]) ));
         }
-        return response()->json($answer, 201);
+        return response()->json($answer, 200);
     }
 
     function getUsersCount(){
-        return response()->json(["count" =>  User::all()->count()], 201);
+        return response()->json(["count" =>  User::all()->count()], 200);
     }
 
     function getUserByID(Request $request){
@@ -197,7 +198,7 @@ class UsersController extends Controller
             }
         }
         $role->save();
-        return response()->json(["message"=> "updated"], 204);
+        return response()->json(["message"=> "updated"], 200);
     }
 
     function createUserWithRole(Request $request)
@@ -254,7 +255,7 @@ class UsersController extends Controller
         foreach ($doctors as $doctor){
             $answer = array_merge($answer, array(array_merge($doctor->user()->toArray(), ["speciality" => $doctor->speciality])));
         }
-        return response()->json($answer, 201);
+        return response()->json($answer, 200);
     }
 
     function generateAlerts(){
@@ -289,7 +290,9 @@ class UsersController extends Controller
                 $count[] = $count_this;
             }
             $count = collect($count)->sortByDesc("count")->last();
-
+            if($count == null){
+                return response()->json(null, 200);
+            }
             $answer[] = array(
                 'title' => 'Напоминание',
                 'text' => "В данный момент талоны присутствуют до ".$calendar->dateTime->format("d-m-y H:i")." Минимальное кол-во талонов составляет: ".$count["count"]." - ".$count["doctor"]["surname"]." ".mb_substr($count["doctor"]["name"],0,1,'UTF8').". ".mb_substr($count["doctor"]["second_name"],0,1,'UTF8').".",
@@ -297,10 +300,7 @@ class UsersController extends Controller
                 'action_title' => 'Управление талонами'
             );
         }
-        if(count($answer) == 0){
-            $answer = null;
-        }
-        return response()->json($answer, 201);
+        return response()->json($answer, 200);
     }
 
     function searchUsers(Request $request){
@@ -318,7 +318,16 @@ class UsersController extends Controller
         if(count($answer) == 0)
             return response()->json(["message" => "not match"], 400);
 
-        return response()->json($answer, 201);
+        return response()->json($answer, 200);
+    }
+
+    function updatePassword(Request $request){
+        if(Auth::user()->password == bcrypt($request->old_password)){
+            Auth::user()->password = bcrypt($request->new_password);
+            return response()->json(["message" => "updated"], 200);
+        }
+        else
+            return response()->json(["message" => "Wrong old password"], 400);
     }
 
 }
