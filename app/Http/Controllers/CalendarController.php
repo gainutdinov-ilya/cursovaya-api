@@ -79,6 +79,9 @@ class CalendarController extends Controller
         $doctors_tmp = [];
         $doctors = [];
         $tickets = Calendar::all()->where('dateTime', '>=', $now)->where('free', '==', 1)->sortBy('dateTime');
+        if(Auth::user()->isAdmin()){
+            $tickets = Calendar::all();
+        }
         foreach ($tickets as $ticket) {
             $doctors_tmp = array_merge($doctors_tmp, [$ticket->doctor]);
         }
