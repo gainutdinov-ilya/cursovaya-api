@@ -78,9 +78,9 @@ class CalendarController extends Controller
         $now = new \DateTime("now", new \DateTimeZone('Asia/Yekaterinburg'));
         $doctors_tmp = [];
         $doctors = [];
-        $tickets = Calendar::all()->where('dateTime', '>=', $now)->where('free', '==', 1)->sortBy('dateTime');
+        $tickets = Calendar::all()->where('dateTime', '>=', $now);
         if(Auth::user()->isAdmin()){
-            $tickets = Calendar::all();
+            $tickets = Calendar::all()->where('free', '==', 1)->sortBy('dateTime');
         }
         foreach ($tickets as $ticket) {
             $doctors_tmp = array_merge($doctors_tmp, [$ticket->doctor]);
