@@ -333,11 +333,14 @@ class UsersController extends Controller
 
     function updatePassword(Request $request){
         if(isset($request->id)){
-            if(!Auth::user()->isAdmin() || !Auth::user()->isAdmin())
-            $user = User::find($request->id);
-            $user->password = bcrypt($request->new_password);
-            $user->save();
-            return response()->json(["message" => "updated with personal/admin privileges"]);
+            if(!Auth::user()->isAdmin() || !Auth::user()->isAdmin()) {
+                $user = User::find($request->id);
+                $user->password = bcrypt($request->new_password);
+                $user->save();
+                return response()->json(["message" => "updated with personal/admin privileges"]);
+            }else{
+                return response()->json(["message" => "blocked"], 403);
+            }
         }
         else if(\Hash::check($request->old_password, $request->user()->password)){
 
