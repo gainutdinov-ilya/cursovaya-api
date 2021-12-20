@@ -76,25 +76,6 @@ class UsersController extends Controller
         }
     }
 
-    function refreshToken(Request $request){
-        $client = Client::where('password_client', 1)->first();
-        $token = $request->refresh_token;
-        $request->request->add(
-            [
-                'grant_type' => 'refresh_token',
-                'refresh_token' => $token,
-                'client_id' => $client->id,
-                'client_secret' => $client->secret,
-                'scope' => '',
-            ]
-        );
-        $token = Request::create(
-            'oauth/token',
-            'POST'
-        );
-        return \Route::dispatch($token);
-    }
-
     function logout(){
         auth()->user()->tokens->each(function ($token, $key){
             if($token == Auth::user()->token()){
@@ -104,20 +85,31 @@ class UsersController extends Controller
         return response()->json(["message"=> "logout success"]);
     }
 
+    function logoutFromAll(){
+        auth()->user()->tokens->each(function ($token, $key){
+            if($token != Auth::user()->token()){
+                $token->delete();
+            }
+        });
+        return response()->json(["message"=> "logout success"]);
+    }
+
     function update(Request $request){
+        if($request->email != $request->user()->email) {
+            $valid = validator($request->only('email', 'name', 'password', 'phone_number', 'surname', 'second_name'), [
+                'email' => 'string|email|max:255|unique:users',
+                'name' => 'string|max:255',
+                'surname' => 'string|max:255',
+                'second_name' => 'string|max:255',
+                'phone_number' => 'string',
+                'password' => 'string|min:6',
+            ]);
 
-        $valid = validator($request->only('email', 'name', 'password', 'phone_number','surname','second_name'), [
-            'name' => 'string|max:255',
-            'surname' => 'string|max:255',
-            'second_name' => 'string|max:255',
-            'phone_number' => 'string',
-            'password' => 'string|min:6',
-        ]);
 
-        if ($valid->fails()) {
-            return response()->json($valid->errors()->all(), 400);
+            if ($valid->fails()) {
+                return response()->json($valid->errors()->all(), 400);
+            }
         }
-
         $user = $request->user();
         if(isset($request->name)) {
             $user->name = $request->input('name');
@@ -136,7 +128,7 @@ class UsersController extends Controller
         if(isset($request->password))
             $user->password = bcrypt($request->input('password'));
         $user->save();
-        return response()->json(["message"=>"updated"], 200);
+        return response()->json(["message"=>"updated"]);
     }
 
 
@@ -147,26 +139,42 @@ class UsersController extends Controller
             $role = $user->role()->role;
             $answer = array_merge($answer, array(array_merge($user->toArray(), ["role"=>$role]) ));
         }
-        return response()->json($answer, 200);
+        return response()->json($answer);
     }
 
     function getUsersCount(){
-        return response()->json(["count" =>  User::all()->count()], 200);
+        return response()->json(["count" =>  User::all()->count()]);
     }
 
     function getUserByID(Request $request){
-        $user = User::where('id',$request->id)->first();
+        $user = User::find($request->id);
+
         $role = $user->role()->role;
         $speciality = null;
         if($role == 'doctor'){
             if($user->doctor() != null)
                 $speciality = $user->doctor()->speciality;
         }
-        return response()->json(array_merge($user->toArray(), ["role"=>$role, "speciality" => $speciality]), 200);
+        return response()->json(array_merge($user->toArray(), ["role"=>$role, "speciality" => $speciality]));
     }
 
     function updateUserByID(Request $request){
-        $user = User::where('id',$request->id)->first();
+        $user = User::find($request->id);
+        if($request->email != $user->email) {
+            $valid = validator($request->only('email', 'name', 'password', 'phone_number', 'surname', 'second_name'), [
+                'email' => 'string|email|max:255|unique:users',
+                'name' => 'string|max:255',
+                'surname' => 'string|max:255',
+                'second_name' => 'string|max:255',
+                'phone_number' => 'string',
+                'password' => 'string|min:6',
+            ]);
+
+
+            if ($valid->fails()) {
+                return response()->json($valid->errors()->all(), 400);
+            }
+        }
         $role = $user->role();
         if(isset($request->name)) {
             $user->name = $request->input('name');
@@ -180,6 +188,8 @@ class UsersController extends Controller
             $user->oms = $request->input('oms');
         if(isset($request->phone_number))
             $user->phone_number = $request->input('phone_number');
+        if(isset($request->email))
+            $user->email = $request->input('email');
         $user->save();
         if($role-> role == 'doctor' && $request->role != 'doctor'){
             $user->doctor()->delete();
@@ -198,7 +208,7 @@ class UsersController extends Controller
             }
         }
         $role->save();
-        return response()->json(["message"=> "updated"], 200);
+        return response()->json(["message"=> "updated"]);
     }
 
     function createUserWithRole(Request $request)
@@ -255,7 +265,7 @@ class UsersController extends Controller
         foreach ($doctors as $doctor){
             $answer = array_merge($answer, array(array_merge($doctor->user()->toArray(), ["speciality" => $doctor->speciality])));
         }
-        return response()->json($answer, 200);
+        return response()->json($answer);
     }
 
     function generateAlerts(){
@@ -291,7 +301,7 @@ class UsersController extends Controller
             }
             $count = collect($count)->sortByDesc("count")->last();
             if($count == null){
-                return response()->json(null, 200);
+                return response()->json(null);
             }
             $answer[] = array(
                 'title' => 'Напоминание',
@@ -300,7 +310,7 @@ class UsersController extends Controller
                 'action_title' => 'Управление талонами'
             );
         }
-        return response()->json($answer, 200);
+        return response()->json($answer);
     }
 
     function searchUsers(Request $request){
@@ -318,16 +328,27 @@ class UsersController extends Controller
         if(count($answer) == 0)
             return response()->json(["message" => "not match"], 400);
 
-        return response()->json($answer, 200);
+        return response()->json($answer);
     }
 
     function updatePassword(Request $request){
-        if(Auth::user()->password == bcrypt($request->old_password)){
-            Auth::user()->password = bcrypt($request->new_password);
-            return response()->json(["message" => "updated"], 200);
+        if(isset($request->id)){
+            if(!Auth::user()->isAdmin() || !Auth::user()->isAdmin())
+            $user = User::find($request->id);
+            $user->password = bcrypt($request->new_password);
+            $user->save();
+            return response()->json(["message" => "updated with personal/admin privileges"]);
         }
-        else
-            return response()->json(["message" => "Wrong old password"], 400);
+        else if(\Hash::check($request->old_password, $request->user()->password)){
+
+            $user = $request->user();
+            $user->password = bcrypt($request->new_password);
+            $user->save();
+            return response()->json(["message" => "updated"]);
+        }
+        else {
+            return response()->json(["message" => "wrong old password"], 400);
+        }
     }
 
 }

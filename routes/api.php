@@ -30,11 +30,13 @@ Route::middleware('auth:api')->group(function () {
     });
     Route::get('/alerts', [UsersController::class, 'generateAlerts']);
     Route::put('/user', [UsersController::class, 'update']);
-    Route::post('/logout', [UsersController::class, 'logout']);
+    Route::delete('/logout', [UsersController::class, 'logout']);
+    Route::delete('/logout/anywhere', [UsersController::class, 'logoutFromAll']);
     Route::get('/calendar', [CalendarController::class, 'getRelevant']);
     Route::post('/calendar/note', [CalendarController::class, 'createNote']);
     Route::get('/calendar/note', [CalendarController::class, 'getNote']);
     Route::delete('/calendar/note', [CalendarController::class, 'cancelNote']);
+    Route::put('user/password', [UsersController::class, 'updatePassword']);
     Route::middleware('role:admin')->group(function (){
         Route::get('/users', [UsersController::class,'getUsers']);
         Route::get('/users/count', [UsersController::class, 'getUsersCount']);
@@ -55,5 +57,4 @@ Route::middleware('auth:api')->group(function () {
 
 Route::post("/register", [UsersController::class, 'create']);
 Route::post("/login", [UsersController::class,'login'])->name('login');
-Route::post('/refresh', [UsersController::class, 'refreshToken']);
 
