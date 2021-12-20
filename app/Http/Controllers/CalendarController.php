@@ -75,59 +75,47 @@ class CalendarController extends Controller
 
     function getRelevant()
     {
-        $now = new \DateTime("now", new \DateTimeZone('Asia/Yekaterinburg'));
-        $doctors_tmp = [];
+        $now = new \DateTime("now");
+        $timestamp = new \DateInterval("PT6H");
+        $now->add($timestamp);
         $doctors = [];
-        $tickets = Calendar::all()->where('dateTime', '>=', $now);
-        if(Auth::user()->isAdmin()){
+        $times = [];
+
+        $tickets = Calendar::all()->where('dateTime', '>=', $now)->where('free', '==', 1)->sortBy('dateTime');
+        if (Auth::user()->isAdmin()) {
             $tickets = Calendar::all()->where('free', '==', 1)->sortBy('dateTime');
         }
+
         foreach ($tickets as $ticket) {
-            $doctors_tmp = array_merge($doctors_tmp, [$ticket->doctor]);
+            $doctors[] = $ticket->doctor();
+            $times[] = $ticket->dateTime;
         }
-        $doctors_tmp = collect($doctors_tmp)->unique();
-        $doctors_tmp = User::all()->whereIn('id', $doctors_tmp);
-        $times = [];
-        foreach ($tickets as $ticket) {
-            $times = array_merge($times, array($ticket->dateTime->format("d.m")));
+
+        $doctors = collect($doctors)->unique();
+        $times = collect($times)->unique();
+        $answer = [];
+        $dates = [];
+        foreach ($times as $time){
+            $dates[] = $time->format("d.m");
         }
-        $times_tmp = collect($times)->unique();
-        $times = [];
-        foreach ($times_tmp as $time) {
-            $times = array_merge($times, array($time));
-        }
-        foreach ($doctors_tmp as $doc) {
-            $docTickets_tmp = $tickets->where('doctor', $doc->id);
-            $docTickets = [];
-            $docTicketForDay = [];
-            $docTicketForDayLinks = [];
-            $ticketsForDay = 0;
-            $lastTicket = "";
-            foreach ($docTickets_tmp as $docTicket) {
-                $docTickets = array_merge($docTickets, array($docTicket->toArray()));
-                if ($docTicket->dateTime->format("d-m-Y") == $lastTicket) {
-                    $ticketsForDay++;
-                    $docTicketForDayLinks[] = $docTicket;
-                } else if ($lastTicket == "") {
-                    $ticketsForDay++;
-                    $docTicketForDayLinks[] = $docTicket;
-                } else {
-                    $docTicketForDay = array_merge($docTicketForDay, array(["date" => $lastTicket, "count" => $ticketsForDay, "tickets" => $docTicketForDayLinks]));
-                    $ticketsForDay = 1;
-                    $docTicketForDayLinks = [];
-                    $docTicketForDayLinks[] = $docTicket;
+        $dates = collect($dates)->unique();
+        foreach ($doctors as $doctor) {
+            $ticketsForThisDoctor = [];
+            foreach ($dates as $day) {
+                $count = 0;
+                $ticketsForThisDay = [];
+                foreach ($tickets as $ticket) {
+                    if ($ticket->dateTime->format("d.m") == $day && $ticket->doctor == $doctor->id) {
+                        $ticketsForThisDay[] = $ticket;
+                        $count++;
+                    }
                 }
-                $lastTicket = $docTicket->dateTime->format("d-m-Y");
+                $ticketsForThisDoctor[] = ["date" => $day, "count" => $count, "tickets" => $ticketsForThisDay];
             }
-            $docTicketForDay = array_merge($docTicketForDay, array(["date" => $docTicket->dateTime->format("d-m-Y"), "count" => $ticketsForDay, "tickets" => $docTicketForDayLinks]));
-            $doc = array_merge($doc->toArray(), ["speciality" => $doc->doctor()->speciality, "ticketsForDay" => $docTicketForDay]);
-            $doctors = array_merge($doctors, array($doc));
+            $answer[] = array_merge(array_merge($doctor->toArray(), ["speciality" => $doctor->doctor()->speciality]), array("ticketsForDay" => $ticketsForThisDoctor));
         }
-        if (count($doctors) == 0 || count($times) == 0) {
-            $doctors = null;
-            $times = null;
-        }
-        return response()->json(["doctors" => $doctors, "times" => $times], 200);
+
+        return response()->json(["doctors" => $answer, "times" => $dates], 200);
     }
 
     function delete(Request $request)
@@ -144,7 +132,7 @@ class CalendarController extends Controller
 
     function createNote(Request $request)
     {
-        if(Auth::user()->isClient()) {
+        if (Auth::user()->isClient()) {
             $notes = Notes::all()->where('client', '==', Auth::user()->id);
             if ($notes != null) {
                 foreach ($notes as $note) {
@@ -163,9 +151,9 @@ class CalendarController extends Controller
                 "visited" => false
             ]);
             return response()->json(["message" => "created"], 201);
-        }else{
+        } else {
             $calendar = Calendar::all()->where('id', '==', $request->id)->first();
-            if(!$calendar->free){
+            if (!$calendar->free) {
                 return response()->json(["message" => "taked"], 400);
             }
             $calendar->free = false;
@@ -197,13 +185,13 @@ class CalendarController extends Controller
                     "speciality" => $doctor->doctor()->speciality
                 ],
                 "note" => $note,
-                "ticket" => Auth::user()->id." ".$calendar->id." ".$note->id
+                "ticket" => Auth::user()->id . " " . $calendar->id . " " . $note->id
             ]);
-        }elseif (Auth::user()->isDoctor()){
+        } elseif (Auth::user()->isDoctor()) {
             $note = Notes::all()->where('id', '==', $request->note)->first();
             $calendar = $note->calendar();
             $client = $note->client();
-            if($client->id == $request->client && $calendar->id == $request->calendar){
+            if ($client->id == $request->client && $calendar->id == $request->calendar) {
                 $note->visited = true;
                 $note->save();
                 $time = new \DateTime($calendar->dateTime);
@@ -217,8 +205,7 @@ class CalendarController extends Controller
             }
 
             return response()->json($request, 400);
-        }
-        else{
+        } else {
             $note = Notes::all()->where('id', '==', $request->id)->get()->first();
             $calendar = $note->calendar();
             $doctor = $calendar->doctor();
@@ -231,33 +218,35 @@ class CalendarController extends Controller
                     "speciality" => $doctor->doctor()->speciality
                 ],
                 "note" => $note,
-                "ticket" => Auth::user()->id." ".$calendar->id." ".$note->id
+                "ticket" => Auth::user()->id . " " . $calendar->id . " " . $note->id
             ]);
         }
     }
 
-    function getNotes(Request $request){
+    function getNotes(Request $request)
+    {
         $notes = Notes::all()->where('client', '==', $request->id);
         $notes = $notes->sortByDesc('id');
         $answer = [];
-        foreach ($notes as $note){
+        foreach ($notes as $note) {
             $calendar = $note->calendar();
             $doctor = $calendar->doctor();
             $answer[] = ["calendar" => $calendar->dateTime->format("d-m-Y H:i"),
                 "doctor" => [
-                "name" => $doctor->name,
-                "surname" => $doctor->surname,
-                "second_name" => $doctor->second_name,
-                "speciality" => $doctor->doctor()->speciality
-            ],
+                    "name" => $doctor->name,
+                    "surname" => $doctor->surname,
+                    "second_name" => $doctor->second_name,
+                    "speciality" => $doctor->doctor()->speciality
+                ],
                 "note" => $note,
-                "ticket" => $request->id." ".$calendar->id." ".$note->id];
+                "ticket" => $request->id . " " . $calendar->id . " " . $note->id];
         }
         return response()->json(array_merge($answer), 200);
     }
 
-    function cancelNote(Request $request){
-        $note = Notes::all()->where('id','==', $request->id)->first();
+    function cancelNote(Request $request)
+    {
+        $note = Notes::all()->where('id', '==', $request->id)->first();
         $calendar = $note->calendar();
         $calendar->free = true;
         $calendar->save();
